@@ -1,0 +1,25 @@
+name: Create signing key (run once)
+# Makes a release signing key and the four values you paste into Settings → Secrets → Actions.
+# IMPORTANT: use a PRIVATE repository. In a public repository anyone could download the artifact.
+on: workflow_dispatch
+jobs:
+  keygen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate keystore
+        run: |
+          PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PASS"
+          keytool -genkeypair -keystore release.jks -alias privateai -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$PASS" -keypass "$PASS" -dname "CN=Private AI, O=dragon-729"
+          {
+            echo "KEYSTORE_PASSWORD=$PASS"
+            echo "KEY_PASSWORD=$PASS"
+            echo "KEY_ALIAS=privateai"
+            echo "KEYSTORE_BASE64=$(base64 -w0 release.jks)"
+          } > signing-secrets.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-secrets
+          path: signing-secrets.txt
+          retention-days: 1
